@@ -1,5 +1,4 @@
 var pg = require('pg');
-var pgSpice = require('pg-spice');
 var genericPool = require('generic-pool');
 var PooledPg = require('./PooledPg.js');
 var nodeScripts = require('./node_scripts/nodeScripts.js');
@@ -7,20 +6,20 @@ var splitCommand = '$NODE_COMMAND$';
 var nodeCommand = 'NODE';
 var parallelCommand = 'PARALLEL';
 var parallelSplit = '$PARALLEL$';
-pgSpice.patch(pg);
 var async = require('async');
 var debug = require('debug')('pg-batch:')
+var debugPool = require('debug')('pg-batch:pool')
 var fs = require('fs')
 var PGBatch = function(pgConfig){
     var self = this;
     self.pgConfig = {
-        poolIdleTimeout : config.pgPoolIdleTimeout,
-        poolSize : config.pgPoolSize || 5,
-        user : config.username,
-        password : config.password,
-        host : config.host,
-        port : config.port,
-        database : config.database
+        poolIdleTimeout : pgConfig.pgPoolIdleTimeout,
+        pgPoolSize : pgConfig.pgPoolSize || 5,
+        user : pgConfig.username,
+        password : pgConfig.password,
+        host : pgConfig.host,
+        port : pgConfig.port,
+        database : pgConfig.database
     }
     this.pool = genericPool.Pool({
         name : 'postgres',
@@ -41,7 +40,7 @@ var PGBatch = function(pgConfig){
         idleTimeoutMillis : self.pgConfig.pgPoolIdleTimeout,
         log : function (text, level) {
             if (level !== 'verbose') {
-                debugPool(text, 'PoolSize:', this.getPoolSize());
+                debugPool(text, 'PoolSize:', self.pool.getPoolSize());
             }
         }
     });
@@ -49,8 +48,8 @@ var PGBatch = function(pgConfig){
 }
 
 //Run a simple sql
-PGBatch.prototype.runPostgresCommand = function(command, callback) {
-    this.pooledPg.query(command, function(err, result){
+PGBatch.prototype.runPostgresCommand = function(command,queryParameters, callback) {
+    this.pooledPg.query(command, {}, function(err, result){
         if(err){
             console.error('error with:', command.substring(0,20),err);
             console.error('error at: ', command.substring(err.position - 10, err.position  ))
@@ -115,7 +114,7 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
         self.runPostgresCommand(sqlCommand, callback);
     } else if(instructions.type === 'node_script'){
         var node = instructions.node;
-        var myFunction = nodeScripts[relative_path];
+        var myFunction = nodeScripts[node.relative_path];
         //Script is not defined
         if(myFunction === undefined){
             return callback('Method not defined', {})

@@ -1,7 +1,7 @@
 var async = require('async');
 
 var getIterators = function(pgBatch, prepareQuery, callback){
-    pgBatch.pooledPg.query(prepareQuery, function(err, result){
+    pgBatch.pooledPg.query(prepareQuery, {}, function(err, result){
         if(err){
             return callback(err, {})
         }
@@ -12,10 +12,11 @@ var getIterators = function(pgBatch, prepareQuery, callback){
 module.exports = function(pgBatch, params, callback) {
     var prepareQuery = params.prepareQuery;
     var query = params.query;
-    getIterators(pgBatch, function(err, result){
+    getIterators(pgBatch, prepareQuery, function(err, result){
         if(err){
             return callback(err);
         }
+            console.log(pgBatch.pgConfig.pgPoolSize, result)
         async.eachLimit(result, pgBatch.pgConfig.pgPoolSize, function iterator(item, callback){
             "use strict";
             console.log(item);
@@ -23,7 +24,7 @@ module.exports = function(pgBatch, params, callback) {
             for(var variable in item){
                 my_query = my_query.replace(new RegExp(':' + variable,'g'), item[variable])
             }
-            pgBatch.runPostgresCommand(my_query, callback);
+            pgBatch.runPostgresCommand(my_query, {}, callback);
         })
 
     }, function(err){

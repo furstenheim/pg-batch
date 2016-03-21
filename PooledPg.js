@@ -1,7 +1,7 @@
 //TODO move this to separate library
 /**pooledPg is a pg client that is fetched each time it is required and returned to the pool right after, thus reducing the total amount of time out of the pool and all the problems associated with forgetting returning a client**/
 
-var PooledPg = exports.pooledPg = function (pgPool) {
+var PooledPg = module.exports = function (pgPool) {
     "use strict";
     this.pgPool = pgPool;
 };
