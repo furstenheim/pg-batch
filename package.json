@@ -1,11 +1,16 @@
 {
-  "name": "nodejs",
-  "version": "0.0.0",
+  "name": "pg-batch",
+  "version": "0.0.1",
+  "description" : "Batching functionalities for postgres",
   "dependencies" : {
     "generic-pool" : "2.2.1",
     "pg": "^4.4.1",
     "pg-spice": "git://github.com/furstenheim/node-pg-spice.git#master"
   },
+  "repository" : {
+    "type" : "git",
+    "url" : "git://github.com/furstenheim/pg-batch"
+  }
   "devDependencies" : {
     "debug" : "*"
   }
