@@ -11,17 +11,16 @@ pgSpice.patch(pg);
 var async = require('async');
 var debug = require('debug')('pg-batch:')
 var fs = require('fs')
-var PGBatch = function(config){
+var PGBatch = function(pgConfig){
     var self = this;
-    config.postgres = config.postgres || {};
     self.pgConfig = {
-        poolIdleTimeout : config.postgres.pgPoolIdleTimeout,
-        poolSize : config.postgres.pgPoolSize || 5,
-        user : config.postgres.username,
-        password : config.postgres.password,
-        host : config.postgres.host,
-        port : config.postgres.port,
-        database : config.postgres.database
+        poolIdleTimeout : config.pgPoolIdleTimeout,
+        poolSize : config.pgPoolSize || 5,
+        user : config.username,
+        password : config.password,
+        host : config.host,
+        port : config.port,
+        database : config.database
     }
     this.pool = genericPool.Pool({
         name : 'postgres',
@@ -160,3 +159,5 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
     }
 
 }
+
+module.exports = PGBatch;

@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "dependencies" : {
     "generic-pool" : "2.2.1",
-    "pg": "^4.4.1"
-
+    "pg": "^4.4.1",
+    "pg-spice": "git://github.com/furstenheim/node-pg-spice.git#master"
+  },
+  "devDependencies" : {
+    "debug" : "*"
   }
 }
