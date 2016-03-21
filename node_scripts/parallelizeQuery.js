@@ -20,10 +20,10 @@ module.exports = function(pgBatch, params, callback) {
             "use strict";
             console.log(item);
             var my_query = query;
-            for(let variable in item){
+            for(var variable in item){
                 my_query = my_query.replace(new RegExp(':' + variable,'g'), item[variable])
             }
-            runPostgresCommand(my_query, callback);
+            pgBatch.runPostgresCommand(my_query, callback);
         })
 
     }, function(err){

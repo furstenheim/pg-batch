@@ -1,0 +1,9 @@
+{
+  "name": "nodejs",
+  "version": "0.0.0",
+  "dependencies" : {
+    "generic-pool" : "2.2.1",
+    "pg": "^4.4.1"
+
+  }
+}
