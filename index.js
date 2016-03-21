@@ -2,17 +2,21 @@ var pg = require('pg');
 var pgSpice = require('pg-spice');
 var genericPool = require('generic-pool');
 var PooledPg = require('./PooledPg.js');
-var nodeScripts = require('./node_scripts/nodeScripts.js')
+var nodeScripts = require('./node_scripts/nodeScripts.js');
+var splitCommand = '$NODE_COMMAND$';
+var nodeCommand = 'NODE';
+var parallelCommand = 'PARALLEL';
+var parallelSplit = '$PARALLEL$';
 pgSpice.patch(pg);
 var async = require('async');
 var debug = require('debug')('pg-batch:')
 var fs = require('fs')
 var PGBatch = function(config){
     var self = this;
-    this.config = config;
-    var pgConfig = {
+    config.postgres = config.postgres || {};
+    self.pgConfig = {
         poolIdleTimeout : config.postgres.pgPoolIdleTimeout,
-        poolSize : config.postgres.pgPoolSize,
+        poolSize : config.postgres.pgPoolSize || 5,
         user : config.postgres.username,
         password : config.postgres.password,
         host : config.postgres.host,
@@ -23,7 +27,7 @@ var PGBatch = function(config){
         name : 'postgres',
         create : function (callback) {
             var Client = pg.Client;
-            var c = new Client(self.config);
+            var c = new Client(self.pgConfig);
             c.on('notice',function(text){
                 console.log( text)
             });
@@ -34,11 +38,11 @@ var PGBatch = function(config){
             callback(null, c);
         },
         destroy : function (client) {client.end(); },
-        max : config.postgres.pgPoolSize,
-        idleTimeoutMillis : config.postgres.pgPoolIdleTimeout,
+        max : self.pgConfig.pgPoolSize,
+        idleTimeoutMillis : self.pgConfig.pgPoolIdleTimeout,
         log : function (text, level) {
             if (level !== 'verbose') {
-                debugPool(text, 'PoolSize:', postgresPool.getPoolSize());
+                debugPool(text, 'PoolSize:', this.getPoolSize());
             }
         }
     });
@@ -47,7 +51,6 @@ var PGBatch = function(config){
 
 //Run a simple sql
 PGBatch.prototype.runPostgresCommand = function(command, callback) {
-    var self = this;
     this.pooledPg.query(command, function(err, result){
         if(err){
             console.error('error with:', command.substring(0,20),err);
@@ -59,7 +62,28 @@ PGBatch.prototype.runPostgresCommand = function(command, callback) {
 
     })
 }
-
+PGBatch.prototype.runFile = function(instructions, start, callback) {
+    var self = this;
+    async.forEachOfSeries(instructions.split(splitCommand).slice(start), function(item,index,callback){
+        console.log('Starting ', start + index);
+        if(item.substring(0,4) === nodeCommand){
+            eval('var myCommand = ' + item.substring(4));
+            self.runNodeCommand(myCommand, function(err) { if(err) { return callback(err + 'Error was at' + (start + index))} return callback()});
+        } else if (item.substring(0,8) === parallelCommand){
+            async.eachLimit(item.substring(8).split(parallelSplit), self.pgConfig.pgPoolSize,function(new_item, callback){
+                runPostgresCommand(new_item, callback);
+            }, function(err){if (err){return callback(err + 'Error was at start' + index )} return callback()} )
+        } else {
+            runPostgresCommand(item,function(err) { if(err) { return callback(err + 'Error was at start' + (start + index))} return callback()});
+        }
+    },function(err, results){
+        if(err){
+            console.error(err);
+            return callback(err);
+        }
+        callback();
+    });
+}
 PGBatch.prototype.runNodeCommand = function(instructions, callback) {
     var self = this;
     if(instructions.type === 'upload_csv'){
@@ -80,8 +104,8 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
             console.log('loading csv, stderr: ', data.toString('utf-8'));
         });
         var csvPath = path.resolve(csvFolder, csv.name + '.csv');
-        var firstCommand = 'psql -U ' + self.pgConfig.postgres.username + ' -p ' + self.pgConfig.postgres.port + ' -h ' + self.pgConfig.postgres.host + ' -d ' + self.pgConfig.postgres.database + ' -c \'SET CLIENT_ENCODING = "' + csv.encoding + '";\'\n';
-        var command = 'psql -U ' + self.pgConfig.postgres.username + ' -p ' + self.pgConfig.postgres.port +  ' -h ' + self.pgConfig.postgres.host + ' -d ' + self.pgConfig.postgres.database + ' -c "\\copy ' + csv.table + ' from ' + csvPath + ' DELIMITER \'' + csv.delimiter + '\' ' + (csv.quote !== undefined ? ' QUOTE ' + csv.quote : ' ') + (csv.headers === true ? ' HEADER' : ' ')+ ' CSV"';
+        var firstCommand = 'psql -U ' + self.pgConfig.username + ' -p ' + self.pgConfig.port + ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c \'SET CLIENT_ENCODING = "' + csv.encoding + '";\'\n';
+        var command = 'psql -U ' + self.pgConfig.username + ' -p ' + self.pgConfig.port +  ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c "\\copy ' + csv.table + ' from ' + csvPath + ' DELIMITER \'' + csv.delimiter + '\' ' + (csv.quote !== undefined ? ' QUOTE ' + csv.quote : ' ') + (csv.headers === true ? ' HEADER' : ' ')+ ' CSV"';
         terminal.stdin.write(firstCommand);
         console.log(command);
         terminal.stdin.write(command);
@@ -119,8 +143,9 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
             function(){
                 console.log("Writing code");
                 terminal.stdin.write("echo 'lets start the restoring'\n");
-                console.log("pg_restore -U " + config.postgres.username + " -d " + config.postgres.database + ' -h ' + config.postgres.host +  " -p " + config.postgres.port + " -v " + path.resolve(csvFolder,filename) + "\n")
-                terminal.stdin.write("pg_restore -U " + config.postgres.username + " -d " + config.postgres.database +  ' -h ' + config.postgres.host + " -p " + config.postgres.port + " -v " + path.resolve(csvFolder,filename) + "\n");
+                //TODO use template strings
+                console.log("pg_restore -U " + self.pgConfig.username + " -d " + self.pgConfig.database + ' -h ' + self.pgConfig.host +  " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n")
+                terminal.stdin.write("pg_restore -U " + self.pgConfig.username + " -d " + self.pgConfig.database +  ' -h ' + self.pgConfig.host + " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n");
                 terminal.stdin.end()
             },100)
     } else if(instructions.type === 'close_connections'){

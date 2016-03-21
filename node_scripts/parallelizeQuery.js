@@ -16,7 +16,7 @@ module.exports = function(pgBatch, params, callback) {
         if(err){
             return callback(err);
         }
-        async.eachLimit(result, pgBatch.config.pgPoolSize, function iterator(item, callback){
+        async.eachLimit(result, pgBatch.pgConfig.pgPoolSize, function iterator(item, callback){
             "use strict";
             console.log(item);
             var my_query = query;
