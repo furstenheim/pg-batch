@@ -48,7 +48,7 @@ var PGBatch = function(pgConfig){
 }
 
 //Run a simple sql
-PGBatch.prototype.runPostgresCommand = function(command,queryParameters, callback) {
+PGBatch.prototype.runPostgresCommand = function(command, callback) {
     this.pooledPg.query(command, {}, function(err, result){
         if(err){
             console.error('error with:', command.substring(0,20),err);
@@ -69,10 +69,10 @@ PGBatch.prototype.runFile = function(instructions, start, callback) {
             self.runNodeCommand(myCommand, function(err) { if(err) { return callback(err + 'Error was at' + (start + index))} return callback()});
         } else if (item.substring(0,8) === parallelCommand){
             async.eachLimit(item.substring(8).split(parallelSplit), self.pgConfig.pgPoolSize,function(new_item, callback){
-                runPostgresCommand(new_item, callback);
+                self.runPostgresCommand(new_item, callback);
             }, function(err){if (err){return callback(err + 'Error was at start' + index )} return callback()} )
         } else {
-            runPostgresCommand(item,function(err) { if(err) { return callback(err + 'Error was at start' + (start + index))} return callback()});
+            self.runPostgresCommand(item,function(err) { if(err) { return callback(err + 'Error was at start' + (start + index))} return callback()});
         }
     },function(err, results){
         if(err){

@@ -24,7 +24,7 @@ module.exports = function(pgBatch, params, callback) {
             for(var variable in item){
                 my_query = my_query.replace(new RegExp(':' + variable,'g'), item[variable])
             }
-            pgBatch.runPostgresCommand(my_query, {}, callback);
+            pgBatch.runPostgresCommand(my_query, callback);
         })
 
     }, function(err){
