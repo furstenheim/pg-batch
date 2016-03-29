@@ -8,10 +8,12 @@ var parallelCommand = 'PARALLEL';
 var parallelSplit = '$PARALLEL$';
 var async = require('async');
 var debug = require('debug')('pg-batch:')
+var path = require('path')
 var debugPool = require('debug')('pg-batch:pool')
 var fs = require('fs')
-var PGBatch = function(pgConfig){
+var PGBatch = function(pgConfig,csvFolder){
     var self = this;
+    self.csvFolder = csvFolder;
     self.pgConfig = {
         poolIdleTimeout : pgConfig.pgPoolIdleTimeout,
         pgPoolSize : pgConfig.pgPoolSize || 5,
@@ -101,9 +103,9 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
             //psql prints notices to stderr
             console.log('loading csv, stderr: ', data.toString('utf-8'));
         });
-        var csvPath = path.resolve(csvFolder, csv.name + '.csv');
-        var firstCommand = 'psql -U ' + self.pgConfig.username + ' -p ' + self.pgConfig.port + ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c \'SET CLIENT_ENCODING = "' + csv.encoding + '";\'\n';
-        var command = 'psql -U ' + self.pgConfig.username + ' -p ' + self.pgConfig.port +  ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c "\\copy ' + csv.table + ' from ' + csvPath + ' DELIMITER \'' + csv.delimiter + '\' ' + (csv.quote !== undefined ? ' QUOTE ' + csv.quote : ' ') + (csv.headers === true ? ' HEADER' : ' ')+ ' CSV"';
+        var csvPath = path.resolve(self.csvFolder, csv.name + '.csv');
+        var firstCommand = 'psql -U ' + self.pgConfig.user + ' -p ' + self.pgConfig.port + ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c \'SET CLIENT_ENCODING = "' + csv.encoding + '";\'\n';
+        var command = 'psql -U ' + self.pgConfig.user + ' -p ' + self.pgConfig.port +  ' -h ' + self.pgConfig.host + ' -d ' + self.pgConfig.database + ' -c "\\copy ' + csv.table + ' from ' + csvPath + ' DELIMITER \'' + csv.delimiter + '\' ' + (csv.quote !== undefined ? ' QUOTE ' + csv.quote : ' ') + (csv.headers === true ? ' HEADER' : ' ')+ ' CSV"';
         terminal.stdin.write(firstCommand);
         console.log(command);
         terminal.stdin.write(command);
@@ -142,8 +144,8 @@ PGBatch.prototype.runNodeCommand = function(instructions, callback) {
                 console.log("Writing code");
                 terminal.stdin.write("echo 'lets start the restoring'\n");
                 //TODO use template strings
-                console.log("pg_restore -U " + self.pgConfig.username + " -d " + self.pgConfig.database + ' -h ' + self.pgConfig.host +  " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n")
-                terminal.stdin.write("pg_restore -U " + self.pgConfig.username + " -d " + self.pgConfig.database +  ' -h ' + self.pgConfig.host + " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n");
+                console.log("pg_restore -U " + self.pgConfig.user + " -d " + self.pgConfig.database + ' -h ' + self.pgConfig.host +  " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n")
+                terminal.stdin.write("pg_restore -U " + self.pgConfig.user + " -d " + self.pgConfig.database +  ' -h ' + self.pgConfig.host + " -p " + self.pgConfig.port + " -v " + path.resolve(csvFolder,filename) + "\n");
                 terminal.stdin.end()
             },100)
     } else if(instructions.type === 'close_connections'){
