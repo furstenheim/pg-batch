@@ -13,6 +13,7 @@ var debugPool = require('debug')('pg-batch:pool')
 var fs = require('fs')
 var PGBatch = function(pgConfig,csvFolder){
     var self = this;
+    self.nodeScripts = nodeScripts;
     self.csvFolder = csvFolder;
     self.pgConfig = {
         poolIdleTimeout : pgConfig.pgPoolIdleTimeout,
