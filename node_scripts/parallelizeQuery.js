@@ -25,18 +25,14 @@ module.exports = function(pgBatch, params, callback) {
                 my_query = my_query.replace(new RegExp(':' + variable,'g'), item[variable])
             }
             pgBatch.runPostgresCommand(my_query, callback);
-        })
-
-    }, function(err){
-            if(err){
-                return callback(err);
+        }, function(err){
+                if(err){
+                    return callback(err);
+                }
+                console.log('managed to:',query.substring(0,20))
+                callback();
             }
-            console.log('managed to:',query.substring(0,20))
-            callback();
-        }
-
-
-
-    )
+        )
+    })
 
 }
